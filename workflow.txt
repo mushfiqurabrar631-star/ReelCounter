@@ -1,0 +1,29 @@
+name: Build APK
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack Reel Counter project
+        run: |
+          base64 -d reelcounter-project.txt > project.tgz
+          tar xzf project.tgz
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+      - name: Build APK
+        working-directory: ReelCounter
+        run: gradle assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ReelCounter-apk
+          path: ReelCounter/app/build/outputs/apk/debug/app-debug.apk
