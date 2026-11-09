@@ -11,14 +11,32 @@ jobs:
       - uses: actions/checkout@v4
       - name: Unpack Reel Counter project
         run: |
-          base64 -d "reelcounter-project (1) .txt" > project.tgz
+          # Uses the one reelcounter-project*.txt file, whatever the phone named it
+          shopt -s nullglob
+          files=(reelcounter-project*.txt)
+          if [ ${#files[@]} -ne 1 ]; then
+            echo "Keep exactly ONE reelcounter-project*.txt file in the repo. Found: ${files[*]}"
+            exit 1
+          fi
+          echo "Using: ${files[0]}"
+          base64 -d "${files[0]}" > project.tgz
           tar xzf project.tgz
-      - name: Download AI model
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Build AI model (TinyCLIP, MIT licence)
         run: |
+          pip install torch==2.15.0 torchvision==0.29.2 onnx==1.23.2 onnxruntime==1.29.0 \
+            ftfy regex tqdm huggingface_hub psutil numpy
+          git clone -q https://github.com/wkcn/TinyCLIP.git /tmp/TinyCLIP
+          git -C /tmp/TinyCLIP checkout -q ad981bf308f007c4a47c1b34786cc90bbfd2c43c
+          mkdir -p ~/.cache/clip
+          CKPT=~/.cache/clip/TinyCLIP-auto-ViT-45M-32-Text-18M-LAIONYFCC400M.pt
+          curl -fsSL -o $CKPT \
+            https://github.com/wkcn/TinyCLIP-model-zoo/releases/download/checkpoints/TinyCLIP-auto-ViT-45M-32-Text-18M-LAIONYFCC400M.pt
+          echo "da460de77a27162d279f98566df1b4fbd25a38cbd23b69ede15c5db13debb368  $CKPT" | sha256sum -c -
           mkdir -p ReelCounter/app/src/main/assets
-          curl -fsSL -o ReelCounter/app/src/main/assets/nsfw.tflite \
-            https://raw.githubusercontent.com/devzwy/open_nsfw_android/master/data/nsfw2.tflite
-          echo "eb3b446a6a8c1a73998a76011b97cfc67bc01084c63ee195c774e71344a66442  ReelCounter/app/src/main/assets/nsfw.tflite" | sha256sum -c -
+          PYTHONPATH=/tmp/TinyCLIP/src python ReelCounter/tools/build_model.py ReelCounter/app/src/main/assets/clip.onnx
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
