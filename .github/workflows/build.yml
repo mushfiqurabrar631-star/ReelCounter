@@ -13,6 +13,12 @@ jobs:
         run: |
           base64 -d reelcounter-project.txt > project.tgz
           tar xzf project.tgz
+      - name: Download AI model
+        run: |
+          mkdir -p ReelCounter/app/src/main/assets
+          curl -fsSL -o ReelCounter/app/src/main/assets/nsfw.tflite \
+            https://raw.githubusercontent.com/devzwy/open_nsfw_android/master/data/nsfw2.tflite
+          echo "eb3b446a6a8c1a73998a76011b97cfc67bc01084c63ee195c774e71344a66442  ReelCounter/app/src/main/assets/nsfw.tflite" | sha256sum -c -
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
